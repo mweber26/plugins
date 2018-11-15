@@ -44,6 +44,17 @@
 @implementation FLTUrlLauncherPlugin {
   UIViewController *_viewController;
   FLTUrlLaunchSession *_currentSession;
+  UIDocumentInteractionController *_docController;
+}
+
+- (UIViewController *)documentInteractionControllerViewControllerForPreview:(UIDocumentInteractionController *)controller
+{
+    return _viewController;
+}
+
+- (CGRect)documentInteractionControllerRectForPreview:(UIDocumentInteractionController *)controller
+{
+    return CGRectZero;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -70,11 +81,19 @@
   if ([@"canLaunch" isEqualToString:call.method]) {
     result(@([self canLaunchURL:url]));
   } else if ([@"launch" isEqualToString:call.method]) {
-    NSNumber *useSafariVC = call.arguments[@"useSafariVC"];
-    if (useSafariVC.boolValue) {
-      [self launchURLInVC:url result:result];
+    if ([url hasPrefix:@"file://"]) {
+      NSString *file = [url substringFromIndex:7];
+      NSURL* url = [NSURL fileURLWithPath:file];
+      _docController = [UIDocumentInteractionController interactionControllerWithURL:url];
+      _docController.delegate = self;
+      [_docController presentPreviewAnimated:YES];
     } else {
-      [self launchURL:url result:result];
+      NSNumber *useSafariVC = call.arguments[@"useSafariVC"];
+      if (useSafariVC.boolValue) {
+        [self launchURLInVC:url result:result];
+      } else {
+        [self launchURL:url result:result];
+      }
     }
   } else {
     result(FlutterMethodNotImplemented);
